@@ -11,6 +11,7 @@ def main():
     out_file = "pred.csv"
 
     # run_eval(img_dir=test_data)
+    # run_eval(img_dir=test_data, model="blip2")
     cider_score = compute_cider(test_gt, out_file)
     print(cider_score)
 
