@@ -20,13 +20,14 @@ def compute_cider(gt_file, pred_file):
 
     gt_set = pd.read_csv(gt_file)
     pred_set = pd.read_csv(pred_file)
+    merged_df = pd.merge(gt_set, pred_set, on='public_id')
 
     gts = {}
     res = {}
 
-    for index, img_id in enumerate(gt_set['public_id']):
-        gts[img_id] = [gt_set['caption_gt'][index]]
-        res[img_id] = [pred_set['caption_pred'][index]]
+    for index, img_id in enumerate(merged_df['public_id']):
+        gts[img_id] = [merged_df['caption_gt'][index]]
+        res[img_id] = [merged_df['caption_pred'][index]]
 
     cider_score = Cider().compute_score(gts, res)
     return cider_score
