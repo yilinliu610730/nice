@@ -46,7 +46,7 @@ def run_eval(img_dir, model="ofa", out_file="pred.csv"):
         infer_func = ofa_infer
     elif model == "blip2":
         model_name_or_path = "Salesforce/blip2-opt-2.7b"
-        tokenizer = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
+        tokenizer = Blip2Processor.from_pretrained(model_name_or_path)
         model = Blip2ForConditionalGeneration.from_pretrained(model_name_or_path, load_in_8bit=True, \
                 device_map={"": 0}, torch_dtype=torch.float16)
         infer_func = blip2_infer
@@ -67,9 +67,7 @@ def run_eval(img_dir, model="ofa", out_file="pred.csv"):
 
 def blip2_infer(model, processor, path_to_image):
     image = Image.open(path_to_image).convert("RGB")
-
     device = "cuda" if torch.cuda.is_available() else "cpu"
-
     inputs = processor(images=image, return_tensors="pt").to(device, torch.float16)
     generated_ids = model.generate(**inputs)
     caption = processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
