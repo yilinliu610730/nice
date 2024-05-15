@@ -37,6 +37,10 @@ def compute_cider(gt_file, pred_file):
 
 def run_eval(img_dir, model="ofa", out_file="pred.csv"):
 
+    if os.path.exists(out_file):
+        print(f"File {out_file} already exists. Skip evaluation.")
+        return
+
     infer_func = None
 
     if model == "ofa":
@@ -47,8 +51,7 @@ def run_eval(img_dir, model="ofa", out_file="pred.csv"):
     elif model == "blip2":
         model_name_or_path = "Salesforce/blip2-opt-2.7b"
         tokenizer = Blip2Processor.from_pretrained(model_name_or_path)
-        model = Blip2ForConditionalGeneration.from_pretrained(model_name_or_path, load_in_8bit=True, \
-                device_map={"": 0}, torch_dtype=torch.float16)
+        model = Blip2ForConditionalGeneration.from_pretrained(model_name_or_path).cuda()
         infer_func = blip2_infer
     else:
         assert(False)
