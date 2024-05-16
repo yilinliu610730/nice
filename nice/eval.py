@@ -48,6 +48,7 @@ def run_eval(img_dir, model="ofa", out_file="pred.csv"):
         tokenizer = OFATokenizer.from_pretrained(model_name_or_path)
         model = OFAModel.from_pretrained(model_name_or_path, use_cache=True).cuda()
         infer_func = ofa_infer
+        
     elif model == "blip2":
         model_name_or_path = "Salesforce/blip2-opt-2.7b"
         tokenizer = Blip2Processor.from_pretrained(model_name_or_path)
@@ -78,7 +79,7 @@ def blip2_infer(model, processor, path_to_image):
     return caption
 
 
-def ofa_infer(model, tokenizer, path_to_image):
+def ofa_infer(model, tokenizer, path_to_image, prompt=None):
 
     mean, std = [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]
     resolution = 256
@@ -89,7 +90,7 @@ def ofa_infer(model, tokenizer, path_to_image):
             transforms.Normalize(mean=mean, std=std)
         ])
     
-    txt = " what does the image describe?"
+    txt = " what does the image describe?" if prompt is None else prompt
     inputs = tokenizer([txt], return_tensors="pt").input_ids.cuda()
     img = Image.open(path_to_image)
     patch_img = patch_resize_transform(img).unsqueeze(0).cuda()

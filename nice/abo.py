@@ -37,12 +37,11 @@ class ABODataset(Dataset):
                     image_full_path = f"{images_dir}/{image_path}"
 
                     self.data.append({
+                        "main_image_id": main_image_id,
                         "metadata": item_data,
                         "bullet_points": bullet_points,
                         "path": image_full_path
                     })
-
-                    break
                     
     def __len__(self):
         return len(self.data)
