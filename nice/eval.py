@@ -89,7 +89,7 @@ def ofa_infer(model, tokenizer, path_to_image):
             transforms.Normalize(mean=mean, std=std)
         ])
     
-    txt = "what does the image describe?"
+    txt = " what does the image describe?"
     inputs = tokenizer([txt], return_tensors="pt").input_ids.cuda()
     img = Image.open(path_to_image)
     patch_img = patch_resize_transform(img).unsqueeze(0).cuda()
