@@ -50,24 +50,28 @@ def compute_spice(gts, res):
 
 def main():
 
-    merged_df = pd.read_csv('../results/ofa_pred.csv')
+    merged_df = pd.read_csv('./results/ofa_pred.csv')
 
     caption_gt = merged_df['bullet_points_gt'].tolist()
     caption_pred = merged_df['caption'].tolist()
     caption_with_meta = merged_df['caption_with_meta'].tolist()
+    meta = merged_df['metadata'].tolist()
 
     token_caption_gt = [nltk.word_tokenize(cap) for cap in caption_gt]
     token_caption_pred = [nltk.word_tokenize(cap) for cap in caption_pred]
     token_caption_with_meta = [nltk.word_tokenize(cap) for cap in caption_with_meta]
+    token_meta = [nltk.word_tokenize(cap) for cap in meta]
 
     gts = {}
     res = {}
+    res_cap_md = {}
     res_md = {}
 
     for index, img_id in enumerate(merged_df['main_image_id']):
         gts[img_id] = [merged_df['bullet_points_gt'][index]]
         res[img_id] = [merged_df['caption'][index]]
-        res_md[img_id] = [merged_df['caption_with_meta'][index]]
+        res_cap_md[img_id] = [merged_df['caption_with_meta'][index]]
+        res_md[img_id] = [merged_df['metadata'][index]]
 
     print('--------------------------Without MetaData---------------------')
     compute_bleu(token_caption_gt, token_caption_pred)
@@ -79,6 +83,12 @@ def main():
     compute_bleu(token_caption_gt, token_caption_with_meta)
     compute_rouge(caption_gt, caption_with_meta)
     compute_meteor(token_caption_gt, token_caption_with_meta)
+    compute_cider(gts, res_cap_md)
+
+    print('---------------------------MetaData----------------------------')
+    compute_bleu(token_caption_gt, token_meta)
+    compute_rouge(caption_gt, meta)
+    compute_meteor(token_caption_gt, token_meta)
     compute_cider(gts, res_md)
 
 if __name__ == '__main__':

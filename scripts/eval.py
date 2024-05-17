@@ -1,57 +1,20 @@
 import sys
-import os
-import pickle
 from tqdm import tqdm
 
 sys.path.append(".")
 
-from nice.abo import ABODataset
 from nice.ofa.tokenization_ofa import OFATokenizer
 from nice.ofa.modeling_ofa import OFAModel
 from nice.eval import ofa_infer
+from nice.utils import metadata_to_str, set_seed, load_abo_dataset
 
 import pandas as pd
 
-ignore_keys = ["bullet_point", "other_image_id", "main_image_id", "item_id"]
-
-def metadata_to_str(metadata):
-
-    result = ""
-
-    if isinstance(metadata, str):
-        result = metadata
-    elif isinstance(metadata, dict):
-
-        for key in metadata:
-            if key == "language_tag":
-                if metadata[key] != 'en_US':
-                    return ""
-            elif key in ignore_keys:
-                continue
-            elif key == "value":
-                result += f"{metadata_to_str(metadata[key])}" + " "
-            else:
-                result += f"{key}: {metadata_to_str(metadata[key])}" + " "
-    elif isinstance(metadata, list):
-        for entry in metadata:
-            result += metadata_to_str(entry) + " "
-    else:
-        result = str(metadata)
-
-    return result.strip()
-
 def main():
+    
+    set_seed()
 
-    if os.path.exists('abo_dataset.pkl'):
-        with open('abo_dataset.pkl', 'rb') as f:
-            abo_dataset = pickle.load(f)
-    else:
-        abo_dataset = ABODataset("data")
-
-    print("dataset load complete")
-
-    with open('abo_dataset.pkl', 'wb') as f:
-        pickle.dump(abo_dataset, f, protocol=pickle.HIGHEST_PROTOCOL)
+    train_dataset, val_dataset, test_dataset = load_abo_dataset(dir="data")
 
     model_name_or_path = 'OFA-Sys/ofa-large'
     tokenizer = OFATokenizer.from_pretrained(model_name_or_path)
@@ -59,7 +22,7 @@ def main():
 
     ofa_pred = []
 
-    for image_data in tqdm(abo_dataset):
+    for image_data in tqdm(test_dataset):
 
         main_image_id = image_data["main_image_id"]
         path_to_image = image_data["path"]
