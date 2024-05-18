@@ -6,10 +6,7 @@ from PIL import Image
 import torch
 import pandas as pd
 import os
-from pycocoevalcap.cider.cider import Cider
-from pycocoevalcap.spice.spice import Spice
 from tqdm import tqdm
-
 
 def merge_gt_pred(gt_file, pred_file, out_file="merge.csv"):
     gt_set = pd.read_csv(gt_file)
@@ -17,53 +14,6 @@ def merge_gt_pred(gt_file, pred_file, out_file="merge.csv"):
 
     merged_df = pd.merge(gt_set, pred_set, on='public_id')
     merged_df.to_csv(out_file, index=False)
-
-
-def compute_cider(gt_file, pred_file):
-
-    gt_set = pd.read_csv(gt_file)
-    pred_set = pd.read_csv(pred_file)
-    merged_df = pd.merge(gt_set, pred_set, on='public_id')
-
-    gts = {}
-    res = {}
-
-    for index, img_id in enumerate(merged_df['public_id']):
-        gts[img_id] = [merged_df['caption_gt'][index]]
-        res[img_id] = [merged_df['caption_pred'][index]]
-
-    cider_score = Cider().compute_score(gts, res)
-    return cider_score
-
-def compute_spice(gt_file, pred_file):
-
-    gt_set = pd.read_csv(gt_file)
-    pred_set = pd.read_csv(pred_file)
-    merged_df = pd.merge(gt_set, pred_set, on='public_id')
-
-    gts = {}
-    res = {}
-
-    for index, img_id in enumerate(merged_df['public_id']):
-        gts[img_id] = [merged_df['caption_gt'][index]]
-        res[img_id] = [merged_df['caption_pred'][index]]
-
-    spice_score = Spice().compute_score(gts, res)
-    return spice_score
-
-def compute_bleu(merged_df):
-
-    caption_gt = merged_df['caption_gt'].tolist()
-    caption_pred = merged_df['caption_pred'].tolist()
-
-    tokenized_caption_gt = [nltk.word_tokenize(caption.lower()) for caption in caption_gt]
-    tokenized_caption_pred = [nltk.word_tokenize(caption.lower()) for caption in caption_pred]
-
-    bleu_score = corpus_bleu([[refs] for refs in tokenized_caption_gt], tokenized_caption_pred)
-    
-    print('BLEU:', bleu_score)
-
-    return bleu_score
 
 def run_eval(img_dir, model="ofa", out_file="pred.csv"):
 
@@ -78,11 +28,13 @@ def run_eval(img_dir, model="ofa", out_file="pred.csv"):
         tokenizer = OFATokenizer.from_pretrained(model_name_or_path)
         model = OFAModel.from_pretrained(model_name_or_path, use_cache=True).cuda()
         infer_func = ofa_infer
+
     elif model == "blip2":
         model_name_or_path = "Salesforce/blip2-opt-2.7b"
         tokenizer = Blip2Processor.from_pretrained(model_name_or_path)
         model = Blip2ForConditionalGeneration.from_pretrained(model_name_or_path).cuda()
         infer_func = blip2_infer
+
     else:
         assert(False)
 
@@ -98,12 +50,18 @@ def run_eval(img_dir, model="ofa", out_file="pred.csv"):
     out_df.to_csv(out_file, index=False)
 
 
-def blip2_infer(model, processor, path_to_image):
+def blip2_infer(model, processor, path_to_image, prompt=None):
     image = Image.open(path_to_image).convert("RGB")
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    inputs = processor(images=image, return_tensors="pt").to(device, torch.float16)
+    # inputs = processor(images=image, return_tensors="pt").to(device, torch.float16)
+    # generated_ids = model.generate(**inputs)
+    # caption = processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
+
+    txt = " a photo of" if prompt is None else prompt
+    inputs = processor(images=image, text=txt, return_tensors="pt").to(device=device)
     generated_ids = model.generate(**inputs)
     caption = processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
+    print(caption)
 
     return caption
 

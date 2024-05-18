@@ -33,10 +33,18 @@ def compute_bleu(token_caption_gt, token_caption_pred):
     smoothing_function = SmoothingFunction().method4
     list_of_references = [[refs] for refs in token_caption_gt]
     # Weight is for each n-gram
-    bleu_score = corpus_bleu(list_of_references, token_caption_pred, \
-                 weights=(0.5, 0.5, 0, 0), smoothing_function=smoothing_function)
+    bleu_score_1 = corpus_bleu(list_of_references, token_caption_pred, \
+                 weights=(1, 0, 0, 0), smoothing_function=smoothing_function)
     
-    print('BLEU:', bleu_score)
+    bleu_score_2 = corpus_bleu(list_of_references, token_caption_pred, \
+                 weights=(0, 1, 0, 0), smoothing_function=smoothing_function)
+    
+    bleu_score_4 = corpus_bleu(list_of_references, token_caption_pred, \
+                 weights=(0, 0, 0, 1), smoothing_function=smoothing_function)
+    
+    print('BLEU-1:', bleu_score_1)
+    print('BLEU-2:', bleu_score_2)
+    print('BLEU-4:', bleu_score_2)
 
 def compute_cider(gts, res):
 
@@ -50,7 +58,7 @@ def compute_spice(gts, res):
 
 def main():
 
-    merged_df = pd.read_csv('./results/ofa_pred.csv')
+    merged_df = pd.read_csv('../results/ofa_pred.csv')
 
     caption_gt = merged_df['bullet_points_gt'].tolist()
     caption_pred = merged_df['caption'].tolist()
@@ -78,6 +86,8 @@ def main():
     compute_rouge(caption_gt, caption_pred)
     compute_meteor(token_caption_gt, token_caption_pred)
     compute_cider(gts, res)
+    compute_spice(gts, res)
+    
 
     print('--------------------------WithMetaData-------------------------')
     compute_bleu(token_caption_gt, token_caption_with_meta)
