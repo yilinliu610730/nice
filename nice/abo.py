@@ -26,7 +26,7 @@ class ABODataset(Dataset):
                         continue
 
                     bullet_points = item_data["bullet_point"]
-                    bullet_points = [bullet_point for bullet_point in bullet_points if bullet_point["language_tag"] == "en_US"]
+                    bullet_points = [bullet_point for bullet_point in bullet_points if bullet_point["language_tag"].startswith("en_")]
 
                     if len(bullet_points) == 0:
                         continue
