@@ -53,15 +53,10 @@ def run_eval(img_dir, model="ofa", out_file="pred.csv"):
 def blip2_infer(model, processor, path_to_image, prompt=None):
     image = Image.open(path_to_image).convert("RGB")
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    # inputs = processor(images=image, return_tensors="pt").to(device, torch.float16)
-    # generated_ids = model.generate(**inputs)
-    # caption = processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
-
     txt = " a photo of" if prompt is None else prompt
     inputs = processor(images=image, text=txt, return_tensors="pt").to(device=device)
     generated_ids = model.generate(**inputs)
     caption = processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
-    print(caption)
 
     return caption
 

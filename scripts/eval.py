@@ -13,43 +13,43 @@ import pandas as pd
 
 def main():
 
+    set_seed()
+
+    train_dataset, val_dataset, test_dataset = load_abo_dataset(dir="data")
+
     model_name_or_path = "Salesforce/blip2-opt-2.7b"
-    tokenizer = Blip2Processor.from_pretrained(model_name_or_path)
-    model = Blip2ForConditionalGeneration.from_pretrained(model_name_or_path).cuda()
-    caption = blip2_infer(model, tokenizer, "215262203.jpg", prompt=None)
+    blip_tokenizer = Blip2Processor.from_pretrained(model_name_or_path)
+    blip_model = Blip2ForConditionalGeneration.from_pretrained(model_name_or_path).cuda()
     
-    # set_seed()
+    model_name_or_path = 'OFA-Sys/ofa-large'
+    ofa_tokenizer = OFATokenizer.from_pretrained(model_name_or_path)
+    ofa_model = OFAModel.from_pretrained(model_name_or_path, use_cache=True).cuda()
 
-    # train_dataset, val_dataset, test_dataset = load_abo_dataset(dir="data")
+    ofa_pred = []
 
-    # model_name_or_path = 'OFA-Sys/ofa-large'
-    # tokenizer = OFATokenizer.from_pretrained(model_name_or_path)
-    # model = OFAModel.from_pretrained(model_name_or_path, use_cache=True).cuda()
+    for image_data in tqdm(test_dataset):
 
-    # ofa_pred = []
+        main_image_id = image_data["main_image_id"]
+        path_to_image = image_data["path"]
+        bullet_points = image_data["bullet_points"]
+        meta_data = image_data["metadata"]
+        meta_str = metadata_to_str(meta_data)
 
-    # for image_data in tqdm(test_dataset):
-
-    #     main_image_id = image_data["main_image_id"]
-    #     path_to_image = image_data["path"]
-    #     bullet_points = image_data["bullet_points"]
-    #     meta_data = image_data["metadata"]
-    #     meta_str = metadata_to_str(meta_data)
-
-    #     bullet_points_gt = "; ".join([bullet_point["value"] for bullet_point in bullet_points])
+        bullet_points_gt = "; ".join([bullet_point["value"] for bullet_point in bullet_points])
         
-    #     caption = ofa_infer(model, tokenizer, path_to_image)
+        ofa_caption = ofa_infer(ofa_model, ofa_tokenizer, path_to_image)
+        blip_caption = blip2_infer(blip_model, blip_tokenizer, path_to_image)
 
-    #     caption = ofa_infer(model, tokenizer, path_to_image)
-
-    #     meta_str = meta_str[:2048]
-    #     prompt = " Metadata: " + meta_str + " what does the image describe?"
-    #     caption_with_meta = ofa_infer(model, tokenizer, path_to_image, prompt=prompt)
+        meta_str = meta_str[:2048]
+        ofa_prompt = " Metadata: " + meta_str + " what does the image describe?"
+        blip_prompt = " Metadata: " + meta_str + " a photo of"
+        ofa_caption_with_meta = ofa_infer(ofa_model, ofa_tokenizer, path_to_image, prompt=ofa_prompt)
+        blip_caption_with_meta = blip2_infer(blip_model, blip_tokenizer, path_to_image, prompt=blip_prompt)
         
-    #     ofa_pred.append((main_image_id, path_to_image, bullet_points_gt, caption, caption_with_meta, meta_str))
+        ofa_pred.append((main_image_id, path_to_image, bullet_points_gt, ofa_caption, blip_caption, ofa_caption_with_meta, blip_caption_with_meta, meta_str))
 
-    # out_df = pd.DataFrame(ofa_pred, columns=["main_image_id", "path_to_image", "bullet_points_gt", "caption", "caption_with_meta", "metadata"])
-    # out_df.to_csv("ofa_pred.csv", index=False)
+    out_df = pd.DataFrame(ofa_pred, columns=["main_image_id", "path_to_image", "bullet_points_gt", "ofa_caption", "blip_caption", "ofa_caption_with_meta", "blip_caption_with_meta", "metadata"])
+    out_df.to_csv("pred.csv", index=False)
 
 
 if __name__ == '__main__':
