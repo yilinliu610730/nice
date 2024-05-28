@@ -11,6 +11,9 @@ image_dir = f"{data_dir}/images/metadata"
 with tarfile.open(listing_file) as file:
     file.extractall(path=data_dir)
 
+with tarfile.open(image_file) as file:
+    file.extractall(path=data_dir)
+
 for meta_dir in [listing_dir, image_dir]:
     for filename in os.listdir(meta_dir):
         if ".gz" in filename:
@@ -22,5 +25,3 @@ for meta_dir in [listing_dir, image_dir]:
             with open(filepath_out, 'wb') as f:
                 f.write(file_content)
 
-with tarfile.open(image_file) as file:
-    file.extractall(path=data_dir)
