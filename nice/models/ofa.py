@@ -39,7 +39,8 @@ class OFAModelForABO(OFAModel):
             past_key_values=None,
             use_cache=False,
             output_attentions=False,
-            output_hidden_states=False
+            output_hidden_states=False,
+            return_dict=False
     ):
 
         output_attentions = output_attentions if output_attentions else self.config.output_attentions
@@ -133,7 +134,7 @@ class ABOCollator(object):
             # combine metadata and prefix before padding
             meta_str = metadata_to_str(metadata)
             prefix = ' What is the item description?'
-            prompt = meta_str + prefix
+            prompt = prefix + meta_str
 
             image = Image.open(path)
             patch_img = patch_resize_transform(image).unsqueeze(0)
@@ -170,13 +171,12 @@ class ABOCollator(object):
 class OFA:
     def __init__(self, model_name="OFA-Sys/ofa-large"):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.model = OFAModelForABO.from_pretrained(model_name, use_cache=True).to(device)
+        self.model = OFAModelForABO.from_pretrained(model_name, use_cache=True)
         self.tokenizer = OFATokenizer.from_pretrained(model_name)
 
     def train(self, train_dataloader, val_dataloader, epochs=1, lr=5e-5):
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.model.to(device)
 
         self.model.train()
         best_val_loss = float('inf')
