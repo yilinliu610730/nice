@@ -6,6 +6,7 @@ import os
 from nice.data.abo import ABODataset
 from torch.utils.data import DataLoader, random_split
 
+
 def load_pickle(path):
     with open(path, 'rb') as f:
         obj = pickle.load(f)

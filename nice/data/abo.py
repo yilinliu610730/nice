@@ -3,6 +3,7 @@ import pandas as pd
 from torch.utils.data import Dataset
 import json
 from tqdm import tqdm
+import torch
 
 class ABODataset(Dataset):
     def __init__(self, data_dir):
@@ -43,8 +44,6 @@ class ABODataset(Dataset):
                         "path": image_full_path
                     })
 
-                    break
-                    
     def __len__(self):
         return len(self.data)
     
