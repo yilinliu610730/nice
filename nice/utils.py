@@ -53,7 +53,7 @@ def load_abo_dataset(dir="data"):
         abo_dataset = load_pickle(dataset_path)
 
     else:
-        abo_dataset = ABODataset("data")
+        abo_dataset = ABODataset("data/data")
         save_pickle(dataset_path, abo_dataset)
 
     print("dataset load complete")
