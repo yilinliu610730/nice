@@ -42,6 +42,8 @@ class ABODataset(Dataset):
                         "bullet_points": bullet_points,
                         "path": image_full_path
                     })
+
+                    break
                     
     def __len__(self):
         return len(self.data)

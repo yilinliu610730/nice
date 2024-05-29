@@ -3,7 +3,7 @@ import random
 import torch
 import numpy as np
 import os
-from data.abo import ABODataset
+from nice.data.abo import ABODataset
 from torch.utils.data import DataLoader, random_split
 
 def load_pickle(path):
@@ -53,7 +53,7 @@ def load_abo_dataset(dir="data"):
         abo_dataset = load_pickle(dataset_path)
 
     else:
-        abo_dataset = ABODataset("data/data")
+        abo_dataset = ABODataset(dir)
         save_pickle(dataset_path, abo_dataset)
 
     print("dataset load complete")

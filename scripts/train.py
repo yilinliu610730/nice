@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 # from data.abo import ABODataset
 from nice.utils import load_pickle, save_pickle, metadata_to_str, load_abo_dataset, set_seed
-from models.ofa import OFA
+from nice.models.ofa import OFA
 
 def main():
     set_seed()
