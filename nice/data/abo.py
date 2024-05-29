@@ -44,7 +44,8 @@ class ABODataset(Dataset):
                         "path": image_full_path
                     })
 
-                    break
+            # for now, only use one listing data
+            break
 
     def __len__(self):
         return len(self.data)

@@ -39,7 +39,8 @@ class OFAModelForABO(OFAModel):
             past_key_values=None,
             use_cache=False,
             output_attentions=False,
-            output_hidden_states=False
+            output_hidden_states=False,
+            return_dict=False
     ):
 
         output_attentions = output_attentions if output_attentions else self.config.output_attentions
