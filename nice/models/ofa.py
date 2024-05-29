@@ -14,7 +14,8 @@ from torchvision import transforms
 
 class OFA:
     def __init__(self, model_name="OFA-Sys/ofa-large"):
-        self.model = OFAModel.from_pretrained(model_name, use_cache=True).cuda()
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.model = OFAModel.from_pretrained(model_name, use_cache=True).to(device)
         self.tokenizer = OFATokenizer.from_pretrained(model_name)
 
     def train(self, train_dataloader, val_dataloader, epochs=3, lr=5e-5):
