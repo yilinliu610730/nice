@@ -6,7 +6,6 @@ sys.path.append(".")
 
 from transformers import Blip2Processor, Blip2ForConditionalGeneration
 import torch
-from eval import blip2_infer
 from utils import metadata_to_str, set_seed, load_abo_dataset
 from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
