@@ -50,5 +50,8 @@ coverage.xml
 docs/_build/
 
 # Dataset
-data/data
+data
 *.pkl
+
+results
+logs
