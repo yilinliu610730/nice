@@ -1,14 +1,7 @@
-from nice.ofa.tokenization_ofa import OFATokenizer
-from nice.ofa.modeling_ofa import OFAModel
-from transformers import Blip2Processor, Blip2ForConditionalGeneration
 from torchvision import transforms
 from PIL import Image
 import torch
-import pandas as pd
-import os
 from tqdm import tqdm
-import pandas as pd
-import nltk
 from nltk.translate.bleu_score import corpus_bleu, SmoothingFunction
 from nltk.translate.meteor_score import meteor_score
 from rouge_score import rouge_scorer
@@ -16,7 +9,7 @@ from pycocoevalcap.cider.cider import Cider
 from pycocoevalcap.spice.spice import Spice
 import pandas as pd
 import nltk
-import string
+from nice.utils import metadata_to_str
 
 def compute_rouge(caption_gt, caption_pred):
 
@@ -72,46 +65,29 @@ def compute_spice(gts, res):
     # print('Spice:', spice_score)
     return spice_score
 
-def merge_gt_pred(gt_file, pred_file, out_file="merge.csv"):
-    gt_set = pd.read_csv(gt_file)
-    pred_set = pd.read_csv(pred_file)
+def run_ofa_eval(dataset, model, tokenizer, max_seq_length=128, out_file="ofa_pred.csv"):
 
-    merged_df = pd.merge(gt_set, pred_set, on='public_id')
-    merged_df.to_csv(out_file, index=False)
+    res = []
 
-def run_eval(img_dir, model="ofa", out_file="pred.csv"):
+    for sample in tqdm(dataset):
+        image_id = sample["main_image_id"]
+        metadata = sample["metadata"]
+        bullet_points = sample["bullet_points"]
+        path = sample["path"]
 
-    if os.path.exists(out_file):
-        print(f"File {out_file} already exists. Skip evaluation.")
-        return
+        meta_str = metadata_to_str(metadata)
+        prefix = ' What is the item description?'
+        prompt = prefix + meta_str
+    
+        caption = ofa_infer(model, tokenizer, path, prompt, max_seq_length=max_seq_length)
+        bullet_points_gt = "; ".join([bullet_point["value"] for bullet_point in bullet_points])
 
-    infer_func = None
+        res.append((image_id, caption, bullet_points_gt))
 
-    if model == "ofa":
-        model_name_or_path = 'OFA-Sys/ofa-large'
-        tokenizer = OFATokenizer.from_pretrained(model_name_or_path)
-        model = OFAModel.from_pretrained(model_name_or_path, use_cache=True).cuda()
-        infer_func = ofa_infer
-
-    elif model == "blip2":
-        model_name_or_path = "Salesforce/blip2-opt-2.7b"
-        tokenizer = Blip2Processor.from_pretrained(model_name_or_path)
-        model = Blip2ForConditionalGeneration.from_pretrained(model_name_or_path).cuda()
-        infer_func = blip2_infer
-
-    else:
-        assert(False)
-
-    pred = []
-
-    for img_file in tqdm(os.listdir(img_dir)):
-        path_to_image = os.path.join(img_dir, img_file)
-        caption = infer_func(model, tokenizer, path_to_image)
-        img_id = int(img_file.strip(".jpg"))
-        pred.append((img_id, caption))
-
-    out_df = pd.DataFrame(pred, columns=['public_id', 'caption_pred'])
+    out_df = pd.DataFrame(res, columns=['image_id', 'caption', "bullet_points_gt"])
     out_df.to_csv(out_file, index=False)
+
+    return out_df
 
 
 def blip2_infer(model, processor, path_to_image, prompt=None):
@@ -125,7 +101,7 @@ def blip2_infer(model, processor, path_to_image, prompt=None):
     return caption
 
 
-def ofa_infer(model, tokenizer, path_to_image, prompt=None):
+def ofa_infer(model, tokenizer, path_to_image, prompt=None, max_seq_length=128):
 
     mean, std = [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]
     resolution = 256
@@ -135,13 +111,16 @@ def ofa_infer(model, tokenizer, path_to_image, prompt=None):
             transforms.ToTensor(),
             transforms.Normalize(mean=mean, std=std)
         ])
-    
-    txt = " what does the image describe?" if prompt is None else prompt
-    inputs = tokenizer([txt], return_tensors="pt").input_ids.cuda()
+
+    inputs = tokenizer(
+        [prompt], return_tensors="pt", max_length=max_seq_length, truncation=True, padding=True
+    ).input_ids.to(model.device)
+
     img = Image.open(path_to_image)
-    patch_img = patch_resize_transform(img).unsqueeze(0).cuda()
+    patch_img = patch_resize_transform(img).unsqueeze(0).to(model.device)
 
     gen = model.generate(inputs, patch_images=patch_img, num_beams=5, no_repeat_ngram_size=3) 
     captions = tokenizer.batch_decode(gen, skip_special_tokens=True)
+    caption = captions[0]
 
-    return captions[0]
+    return caption

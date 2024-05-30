@@ -168,18 +168,18 @@ class ABOCollator(object):
 
         return inputs
 
-class OFA:
-    def __init__(self, model_name="OFA-Sys/ofa-large"):
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.model = OFAModelForABO.from_pretrained(model_name, use_cache=True)
-        self.tokenizer = OFATokenizer.from_pretrained(model_name)
+# class OFA:
+#     def __init__(self, model_name="OFA-Sys/ofa-large"):
+#         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#         self.model = OFAModelForABO.from_pretrained(model_name, use_cache=True)
+#         self.tokenizer = OFATokenizer.from_pretrained(model_name)
 
-    def train(self, train_dataloader, val_dataloader, epochs=1, lr=5e-5):
-        optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#     def train(self, train_dataloader, val_dataloader, epochs=1, lr=5e-5):
+#         optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
+#         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        self.model.train()
-        best_val_loss = float('inf')
+#         self.model.train()
+#         best_val_loss = float('inf')
 
         # trainer = Trainer(
         #     model=self.model,
