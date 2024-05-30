@@ -33,6 +33,51 @@ from nice.ofa.tokenization_ofa import OFATokenizer
 from nice.ofa.modeling_ofa import OFAModel, _expand_mask
 from nice.models.ofa import OFAModelForABO
 from nice.eval import compute_cider
+from torch.utils.data import DataLoader, Subset
+
+
+def run_eval(val_dataset, model, tokenizer, max_seq_length=128):
+    gts = {}
+    res = {}
+
+    for sample in tqdm(val_dataset):
+        image_id = sample["main_image_id"]
+        metadata = sample["metadata"]
+        bullet_points = sample["bullet_points"]
+        path = sample["path"]
+
+        # combine metadata and prefix before padding
+        meta_str = metadata_to_str(metadata)
+        prefix = ' What is the item description?'
+        prompt = prefix + meta_str
+
+        mean, std = [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]
+        resolution = 256
+        patch_resize_transform = transforms.Compose([
+                lambda image: image.convert("RGB"),
+                transforms.Resize((resolution, resolution), interpolation=Image.BICUBIC),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=mean, std=std)
+            ])
+
+        inputs = tokenizer(
+            [prompt], return_tensors="pt", max_length=max_seq_length, truncation=True, padding=True
+        ).input_ids.to(model.device)
+
+        img = Image.open(path)
+        patch_img = patch_resize_transform(img).unsqueeze(0).to(model.device)
+
+        gen = model.generate(inputs, patch_images=patch_img, num_beams=5, no_repeat_ngram_size=3) 
+        captions = tokenizer.batch_decode(gen, skip_special_tokens=True)
+        caption = captions[0]
+        
+        bullet_points_gt = "; ".join([bullet_point["value"] for bullet_point in bullet_points])
+        gts[image_id] = [bullet_points_gt]
+        res[image_id] = [caption]
+    
+    cider_score = compute_cider(gts, res)
+    return cider_score
+
 
 class EpochEndCallback(TrainerCallback):
 
@@ -45,43 +90,8 @@ class EpochEndCallback(TrainerCallback):
 
     def on_epoch_end(self, args, state, control, **kwargs):
 
-        gts = {}
-        res = {}
-
-        for sample in self.val_dataset:
-            image_id = sample["main_image_id"]
-            metadata = sample["metadata"]
-            bullet_points = sample["bullet_points"]
-            path = sample["path"]
-
-            # combine metadata and prefix before padding
-            meta_str = metadata_to_str(metadata)
-            prefix = ' What is the item description?'
-            prompt = prefix + meta_str
-
-            mean, std = [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]
-            resolution = 256
-            patch_resize_transform = transforms.Compose([
-                    lambda image: image.convert("RGB"),
-                    transforms.Resize((resolution, resolution), interpolation=Image.BICUBIC),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=mean, std=std)
-                ])
-            
-            inputs = self.tokenizer([prompt], return_tensors="pt").input_ids.cuda()
-            img = Image.open(path)
-            patch_img = patch_resize_transform(img).unsqueeze(0).cuda()
-
-            gen = self.model.generate(inputs, patch_images=patch_img, num_beams=5, no_repeat_ngram_size=3) 
-            captions = self.tokenizer.batch_decode(gen, skip_special_tokens=True)
-            caption = captions[0]
-            
-            bullet_points_gt = "; ".join([bullet_point["value"] for bullet_point in bullet_points])
-            gts[image_id] = [bullet_points_gt]
-            res[image_id] = [caption]
-        
-        cide_score = compute_cider(gts, res)
-        print(f"Epoch: {state.epoch} Cider: {cide_score}")
+        cider_score = run_eval(self.val_dataset, self.model, self.tokenizer)
+        print(f"Epoch: {state.epoch} Cider: {cider_score}")
 
 
 def train():
@@ -91,10 +101,16 @@ def train():
     data_dir = "data"
     train_dataset, val_dataset, test_dataset = load_abo_dataset(dir=data_dir)
 
+    print(f"len(train_dataset): {len(train_dataset)}")
+    print(f"len(val_dataset): {len(val_dataset)}")
+
     model = OFAModelForABO.from_pretrained("OFA-Sys/ofa-large", use_cache=True).cuda()
     tokenizer = OFATokenizer.from_pretrained("OFA-Sys/ofa-large")
 
     collator = ABOCollator(tokenizer=tokenizer, max_seq_length=128)
+
+    cider_score = run_eval(val_dataset, model, tokenizer)
+    print(f"Before training: Cider: {cider_score}")
 
     epoch_end_callback = EpochEndCallback(val_dataset, model, tokenizer)
 

@@ -109,7 +109,7 @@ class OFAModelForABO(OFAModel):
 
 class ABOCollator(object):
 
-    def __init__(self, tokenizer, max_seq_length=1024):
+    def __init__(self, tokenizer, max_seq_length=128):
         self.tokenizer = tokenizer
         self.max_seq_length = max_seq_length
 
