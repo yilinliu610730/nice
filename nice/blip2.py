@@ -1,17 +1,13 @@
 import sys
 from tqdm import tqdm
 from PIL import Image
-
-sys.path.append(".")
-
+from peft import LoraConfig, get_peft_model
 from transformers import Blip2Processor, Blip2ForConditionalGeneration
 import torch
 from utils import metadata_to_str, set_seed, load_abo_dataset
 from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
-
 import pandas as pd
-
 
 def blip2_infer(model, processor, path_to_image, prompt=None, max_new_tokens=50):
     image = Image.open(path_to_image).convert("RGB")
@@ -92,6 +88,15 @@ def custom_collate_fn(batch, blip_tokenizer, max_length=256):
         "path_to_image": path_to_image_list
     }
 
+def print_trainable_parameters(model):
+    trainable = 0
+    total = 0
+    for param in model.parameters():
+        total += param.numel()
+        if param.requires_grad:
+            trainable += param.numel()
+    print(f"Trainable parameters: {trainable} | Total parameters: {total} | Percentage: {100 * trainable / total:.2f}%")
+
 def main():
     set_seed()
 
@@ -103,11 +108,22 @@ def main():
     blip_processor = Blip2Processor.from_pretrained(model_name_or_path)
     blip_model = Blip2ForConditionalGeneration.from_pretrained(model_name_or_path).to(device)
 
+    # Define and apply LoRA configuration
+    lora_config = LoraConfig(
+        r=8,
+        lora_alpha=16,
+        lora_dropout=0.1,
+        bias="none",
+        target_modules=["q_proj", "v_proj"]  # Specify target modules based on the model's architecture
+    )
+    blip_model = get_peft_model(blip_model, lora_config)
+    print_trainable_parameters(blip_model)
+
     # Prepare for training
     optimizer = torch.optim.AdamW(blip_model.parameters(), lr=5e-5)
     blip_model.train()
     epochs = 5
-    BATCH_SIZE = 4  # Reduce batch size
+    BATCH_SIZE = 1  # Reduce batch size
     accumulation_steps = 4  # Number of steps to accumulate gradients
 
     collate_fn = lambda batch: custom_collate_fn(batch, blip_processor)
@@ -139,7 +155,7 @@ def main():
             tqdm.write(f"Loss: {loss.item()}")
 
     # Save the model
-    blip_model.save_pretrained("pretrained_blip_model")
+    blip_model.save_pretrained("pretrained_blip_model_lora")
 
     # Evaluation
     blip_model.eval()
