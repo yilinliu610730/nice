@@ -65,7 +65,7 @@ def compute_spice(gts, res):
     # print('Spice:', spice_score)
     return spice_score
 
-def run_ofa_eval(dataset, model, tokenizer, max_seq_length=128, out_file="ofa_pred.csv"):
+def run_ofa_eval(dataset, model, tokenizer, max_seq_length=512, out_file="ofa_pred.csv"):
 
     res = []
 
@@ -101,7 +101,7 @@ def blip2_infer(model, processor, path_to_image, prompt=None):
     return caption
 
 
-def ofa_infer(model, tokenizer, path_to_image, prompt=None, max_seq_length=128):
+def ofa_infer(model, tokenizer, path_to_image, prompt=None, max_seq_length=512):
 
     mean, std = [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]
     resolution = 256

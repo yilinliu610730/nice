@@ -59,7 +59,7 @@ def train(args):
     model = OFAModelForABO.from_pretrained(model_name, use_cache=True).cuda()
     tokenizer = OFATokenizer.from_pretrained(tokenizer_name)
 
-    collator = ABOCollator(tokenizer=tokenizer, max_seq_length=128)
+    collator = ABOCollator(tokenizer=tokenizer, max_seq_length=512)
 
     if args.freeze_encoder:
         for name, param in model.encoder.named_parameters():
@@ -74,7 +74,7 @@ def train(args):
     training_args = TrainingArguments(
         output_dir=f"./results/{current_time}",
         overwrite_output_dir=True,
-        num_train_epochs=3,
+        num_train_epochs=5,
         per_device_train_batch_size=1,
         per_device_eval_batch_size=1,
         learning_rate=5e-5,

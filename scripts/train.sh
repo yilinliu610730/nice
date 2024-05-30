@@ -1,3 +1,3 @@
 #!/bin/bash
 
-python3 -u ./scripts/train.py --freeze-encoder
+python3 -u ./scripts/train_ofa.py --freeze-encoder
