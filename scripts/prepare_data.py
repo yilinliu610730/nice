@@ -2,7 +2,7 @@ import tarfile
 import os
 import gzip
 
-data_dir = "data"
+data_dir = "../nice/data"
 listing_file = f"{data_dir}/abo-listings.tar"
 listing_dir = f"{data_dir}/listings/metadata"
 image_file = f"{data_dir}/abo-images-small.tar"
