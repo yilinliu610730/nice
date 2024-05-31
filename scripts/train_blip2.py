@@ -22,6 +22,7 @@ from datetime import datetime
 def main(args):
     set_seed()
 
+    current_time = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     train_dataset, val_dataset, test_dataset = load_abo_dataset(dir="data")
@@ -71,7 +72,7 @@ def main(args):
     step = 0
 
     for epoch in range(epochs):
-        print(f"Epoch {epoch+1}/{epochs}")
+        print(f"Epoch {epoch + 1}/{epochs}")
         # optimizer.zero_grad()
         for i, batch in enumerate(tqdm(train_loader)):
             input_ids = batch["input_ids"].to(device)
@@ -97,9 +98,8 @@ def main(args):
             model_engine.backward(loss)
             model_engine.step()
 
-    # Save the model
-    current_time = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    blip_model.save_pretrained(f"results/blip2_lora/{current_time}")
+        # Save the model after each epoch
+        blip_model.save_pretrained(f"results/blip2_lora/{current_time}/epoch_{epoch}")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
