@@ -72,7 +72,7 @@ def train(args):
     print("Total training params: %.2fM" % (total / 1e6))
 
     training_args = TrainingArguments(
-        output_dir=f"./results/{current_time}",
+        output_dir=f"./results/ofa/{current_time}",
         overwrite_output_dir=True,
         num_train_epochs=5,
         per_device_train_batch_size=1,
@@ -99,7 +99,7 @@ def train(args):
     )
 
     trainer.train()
-    trainer.save_model(f"./results/{current_time}/final")
+    trainer.save_model(f"./results/ofa/{current_time}/final")
 
 if __name__ == '__main__':
 

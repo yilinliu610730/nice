@@ -65,9 +65,34 @@ def compute_spice(gts, res):
     # print('Spice:', spice_score)
     return spice_score
 
-def run_ofa_eval(dataset, model, tokenizer, max_seq_length=512, out_file="ofa_pred.csv"):
+def run_blip2_eval(dataset, model, tokenizer, max_seq_length=256, out_file="blip2_pred.csv"):
+    # Evaluation
+    model.eval()
+    blip_pred = []
+
+    for image_data in tqdm(dataset):
+        image_id = image_data["main_image_id"]
+        path_to_image = image_data["path"]
+        bullet_points = image_data["bullet_points"]
+        meta_data = image_data["metadata"]
+        meta_str = metadata_to_str(meta_data)
+
+        bullet_points_gt = "; ".join([bullet_point["value"] for bullet_point in bullet_points])
+        meta_str = metadata_to_str(meta_data)
+        prefix = ' What is the item description?'
+        prompt = prefix + meta_str
+
+        caption = blip2_infer(model, tokenizer, path_to_image, prompt=prompt, max_new_tokens=max_seq_length)
+        
+        blip_pred.append((image_id, path_to_image, bullet_points_gt, caption, meta_str))
+
+    out_df = pd.DataFrame(blip_pred, columns=["image_id", "path_to_image", "bullet_points_gt", "caption", "metadata"])
+    out_df.to_csv(out_file, index=False)
+
+def run_ofa_eval(dataset, model, tokenizer, max_seq_length=256, out_file="ofa_pred.csv"):
 
     res = []
+    model.eval()
 
     for sample in tqdm(dataset):
         image_id = sample["main_image_id"]
@@ -90,18 +115,18 @@ def run_ofa_eval(dataset, model, tokenizer, max_seq_length=512, out_file="ofa_pr
     return out_df
 
 
-def blip2_infer(model, processor, path_to_image, prompt=None):
+def blip2_infer(model, processor, path_to_image, prompt=None, max_new_tokens=50):
     image = Image.open(path_to_image).convert("RGB")
     device = "cuda" if torch.cuda.is_available() else "cpu"
     txt = " a photo of" if prompt is None else prompt
     inputs = processor(images=image, text=txt, return_tensors="pt").to(device=device)
-    generated_ids = model.generate(**inputs)
+    generated_ids = model.generate(**inputs, max_new_tokens=max_new_tokens)
     caption = processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
 
     return caption
 
 
-def ofa_infer(model, tokenizer, path_to_image, prompt=None, max_seq_length=512):
+def ofa_infer(model, tokenizer, path_to_image, prompt=None, max_seq_length=256):
 
     mean, std = [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]
     resolution = 256

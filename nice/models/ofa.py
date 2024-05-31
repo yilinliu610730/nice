@@ -109,7 +109,7 @@ class OFAModelForABO(OFAModel):
 
 class ABOCollator(object):
 
-    def __init__(self, tokenizer, max_seq_length=512):
+    def __init__(self, tokenizer, max_seq_length=256):
         self.tokenizer = tokenizer
         self.max_seq_length = max_seq_length
 
@@ -223,46 +223,46 @@ class ABOCollator(object):
             #     best_val_loss = val_loss
             #     torch.save(self.model.state_dict(), "best_model_checkpoint.pth")
     
-    def validate(self, val_dataloader, device):
-        self.model.eval()
-        total_loss = 0
-        with torch.no_grad():
-            for batch in val_dataloader:
-                images, captions, metadata = batch
-                images = images.to(device)
+    # def validate(self, val_dataloader, device):
+    #     self.model.eval()
+    #     total_loss = 0
+    #     with torch.no_grad():
+    #         for batch in val_dataloader:
+    #             images, captions, metadata = batch
+    #             images = images.to(device)
                 
-                # Tokenize captions and metadata
-                input_texts = [" ".join(caption) + " " + metadata_item for caption, metadata_item in zip(captions, metadata)]
-                inputs = self.tokenizer(input_texts, return_tensors="pt", padding=True, truncation=True).to(device)
-                input_ids = inputs.input_ids
+    #             # Tokenize captions and metadata
+    #             input_texts = [" ".join(caption) + " " + metadata_item for caption, metadata_item in zip(captions, metadata)]
+    #             inputs = self.tokenizer(input_texts, return_tensors="pt", padding=True, truncation=True).to(device)
+    #             input_ids = inputs.input_ids
                 
-                # Forward pass
-                outputs = self.model(input_ids=input_ids, pixel_values=images, labels=input_ids)
+    #             # Forward pass
+    #             outputs = self.model(input_ids=input_ids, pixel_values=images, labels=input_ids)
                 
-                # Compute loss
-                loss = outputs.loss
-                total_loss += loss.item()
+    #             # Compute loss
+    #             loss = outputs.loss
+    #             total_loss += loss.item()
                 
-        avg_loss = total_loss / len(val_dataloader)
-        return avg_loss
+    #     avg_loss = total_loss / len(val_dataloader)
+    #     return avg_loss
     
-    def generate_caption(self, image_path, metadata):
-        self.model.eval()
-        image = Image.open(image_path).convert("RGB")
-        transform = transforms.Compose([
-            transforms.Resize((256, 256)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-        ])
-        image = transform(image).unsqueeze(0)
+    # def generate_caption(self, image_path, metadata):
+    #     self.model.eval()
+    #     image = Image.open(image_path).convert("RGB")
+    #     transform = transforms.Compose([
+    #         transforms.Resize((256, 256)),
+    #         transforms.ToTensor(),
+    #         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+    #     ])
+    #     image = transform(image).unsqueeze(0)
         
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.model.to(device)
-        image = image.to(device)
+    #     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    #     self.model.to(device)
+    #     image = image.to(device)
         
-        input_text = "metadata: " + metadata
-        input_ids = self.tokenizer(input_text, return_tensors="pt").input_ids.to(device)
+    #     input_text = "metadata: " + metadata
+    #     input_ids = self.tokenizer(input_text, return_tensors="pt").input_ids.to(device)
         
-        caption_ids = self.model.generate(pixel_values=image, input_ids=input_ids, max_length=16, num_beams=5, early_stopping=True)
-        caption = self.tokenizer.decode(caption_ids[0], skip_special_tokens=True)
-        return caption
+    #     caption_ids = self.model.generate(pixel_values=image, input_ids=input_ids, max_length=16, num_beams=5, early_stopping=True)
+    #     caption = self.tokenizer.decode(caption_ids[0], skip_special_tokens=True)
+    #     return caption
