@@ -90,9 +90,9 @@ def main(args):
             step += 1
             
             if step % log_steps == 0:
+                print(f"Loss: {loss_acc / log_steps}")
                 step = 0
                 loss_acc = 0
-                print(f"Loss: {loss_acc / log_steps}")
 
             model_engine.backward(loss)
             model_engine.step()
