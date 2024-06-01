@@ -33,7 +33,7 @@ def main(args):
         model_name = args.load_checkpoint
 
     blip_processor = Blip2Processor.from_pretrained(processor_name)
-    blip_model = Blip2ForConditionalGeneration.from_pretrained(model_name)
+    blip_model = Blip2ForConditionalGeneration.from_pretrained(model_name).to(device)
 
     # Define and apply LoRA configuration
     lora_config = LoraConfig(
@@ -46,34 +46,20 @@ def main(args):
     blip_model = get_peft_model(blip_model, lora_config)
     print_trainable_parameters(blip_model)
 
-    # Prepare for training
-    # optimizer = torch.optim.AdamW(blip_model.parameters(), lr=5e-5)
+    optimizer = torch.optim.AdamW(blip_model.parameters(), lr=5e-5)
     blip_model.train()
-    epochs = 10
+    epochs = 5
     BATCH_SIZE = 1  # Reduce batch size
+    accumulation_steps = 16  # Number of steps to accumulate gradients
     log_steps = 100
 
-    collate_fn = lambda batch: custom_collate_fn(batch, blip_processor, )
+    collate_fn = lambda batch: custom_collate_fn(batch, blip_processor)
 
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
 
-    # DeepSpeed configuration file path
-    ds_config = 'blip2_ds_config.json'
-
-    # Initialize DeepSpeed
-    model_engine, optimizer, _, _ = deepspeed.initialize(
-        args=None,
-        model=blip_model,
-        model_parameters=blip_model.parameters(),
-        config_params=ds_config
-    )
-
-    loss_acc = 0
-    step = 0
-
     for epoch in range(epochs):
-        print(f"Epoch {epoch + 1}/{epochs}")
-        # optimizer.zero_grad()
+        print(f"Epoch {epoch+1}/{epochs}")
+        optimizer.zero_grad()
         for i, batch in enumerate(tqdm(train_loader)):
             input_ids = batch["input_ids"].to(device)
             input_images = batch["pixel_values"].to(device)
@@ -84,19 +70,17 @@ def main(args):
                 "pixel_values": input_images
             }
 
-            outputs = model_engine(**inputs, labels=labels)
+            outputs = blip_model(**inputs, labels=labels)
             loss = outputs.loss
+            loss = loss / accumulation_steps  # Scale loss
+            loss.backward()
 
-            loss_acc += loss.item()
-            step += 1
-            
-            if step % log_steps == 0:
-                print(f"Loss: {loss_acc / log_steps}")
-                step = 0
-                loss_acc = 0
+            if (i + 1) % accumulation_steps == 0:
+                optimizer.step()
+                optimizer.zero_grad()
 
-            model_engine.backward(loss)
-            model_engine.step()
+            if i % log_steps == 0:
+                print(f"Loss: {loss.item()}")
 
         # Save the model after each epoch
         blip_model.save_pretrained(f"results/blip2_lora/{current_time}/epoch_{epoch}")
