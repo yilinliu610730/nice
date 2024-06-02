@@ -5,7 +5,6 @@ from transformers import CLIPProcessor, CLIPModel, GPT2Tokenizer, GPT2LMHeadMode
 import torch
 from torch.utils.data import DataLoader
 import pandas as pd
-from peft import LoraConfig, get_peft_model
 from utils import metadata_to_str, set_seed, load_abo_dataset
 
 class ClipCapModel(torch.nn.Module):
@@ -14,16 +13,6 @@ class ClipCapModel(torch.nn.Module):
         self.clip_model = clip_model
         self.gpt_model = gpt_model
         self.projection = torch.nn.Linear(clip_dim, gpt_dim)
-
-        # Apply LoRA to the projection layer
-        self.lora_config = LoraConfig(
-            r=8,
-            lora_alpha=16,
-            lora_dropout=0.1,
-            bias="none",
-            target_modules=["projection"]
-        )
-        self.projection = get_peft_model(self.projection, self.lora_config)
 
     def forward(self, pixel_values, input_ids):
         image_features = self.clip_model.get_image_features(pixel_values=pixel_values)
@@ -164,7 +153,10 @@ def main():
 
             input_embeds = clipcap_model(input_images, labels[:, :-1])
 
-            outputs = clipcap_model.gpt_model(inputs_embeds=input_embeds, labels=labels[:, 1:])
+            # Ensure the batch size matches for input_embeds and labels
+            assert input_embeds.size(1) == labels.size(1), "Input embeddings and labels must match in sequence length"
+
+            outputs = clipcap_model.gpt_model(inputs_embeds=input_embeds, labels=labels)
             loss = outputs.loss
             loss = loss / accumulation_steps  # Scale loss
             loss.backward()
