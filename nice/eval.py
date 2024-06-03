@@ -93,7 +93,7 @@ def run_ofa_eval(dataset, model, tokenizer, max_seq_length=256, out_file="ofa_pr
 
     res = []
     model.eval()
-
+    
     for sample in tqdm(dataset):
         image_id = sample["main_image_id"]
         metadata = sample["metadata"]
@@ -144,7 +144,7 @@ def ofa_infer(model, tokenizer, path_to_image, prompt=None, max_seq_length=256):
     img = Image.open(path_to_image)
     patch_img = patch_resize_transform(img).unsqueeze(0).to(model.device)
 
-    gen = model.generate(inputs, patch_images=patch_img, num_beams=5, no_repeat_ngram_size=3) 
+    gen = model.generate(inputs, patch_images=patch_img, num_beams=5, no_repeat_ngram_size=3, max_new_tokens=max_seq_length) 
     captions = tokenizer.batch_decode(gen, skip_special_tokens=True)
     caption = captions[0]
 
