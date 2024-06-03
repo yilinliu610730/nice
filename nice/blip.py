@@ -18,7 +18,8 @@ def truncate_or_pad(sequence, max_length, pad_token_id):
 
 def custom_collate_fn(batch, blip_tokenizer, max_length=256):
 
-    texts = []
+    questions = []
+    answers = []
     input_images = []
 
     for image_data in batch:
@@ -28,47 +29,36 @@ def custom_collate_fn(batch, blip_tokenizer, max_length=256):
         meta_data = image_data["metadata"]
         meta_str = metadata_to_str(meta_data)
         prefix = ' What is the item description?'
-        prompt = prefix + meta_str
+        question = prefix + meta_str
 
         bullet_points_gt = "; ".join([bullet_point["value"] for bullet_point in bullet_points])
 
         # Load image
         image = Image.open(path_to_image).convert("RGB")
-
-        inputs = blip_tokenizer(
-            text=prompt,
-            return_tensors="pt",
-            padding="max_length",
-            truncation=True,
-            max_length=max_length
-        )
-
-        in_decoded_str = blip_tokenizer.batch_decode(inputs.input_ids, skip_special_tokens=True)[0].strip()
-
-        labels = blip_tokenizer.tokenizer(
-            text=bullet_points_gt,
-            return_tensors="pt",
-            padding="max_length",
-            truncation=True,
-            max_length=max_length
-        )
-
-        out_decoded_str = blip_tokenizer.batch_decode(labels.input_ids, skip_special_tokens=True)[0].strip()
-        concat_str = in_decoded_str + " " + out_decoded_str
         
-        texts.append(concat_str)
+        questions.append(question)
+        answers.append(bullet_points_gt)
         input_images.append(image)
 
     inputs = blip_tokenizer(
-        text=texts,
+        text=questions,
         images=input_images,
         return_tensors="pt",
         padding="max_length",
         truncation=True,
-        max_length=max_length * 2
+        max_length=max_length
     )
 
-    return inputs
+    labels = blip_tokenizer(
+        text=answers,
+        images=input_images,
+        return_tensors="pt",
+        padding="max_length",
+        truncation=True,
+        max_length=max_length
+    )
+
+    return inputs, labels
 
 def print_trainable_parameters(model):
     trainable = 0

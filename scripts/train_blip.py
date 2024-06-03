@@ -6,14 +6,16 @@ sys.path.append(".")
 # sys.path.append("..")
 
 from transformers import Blip2Processor, Blip2ForConditionalGeneration
+from transformers import BlipProcessor, BlipForQuestionAnswering
 import torch
 from nice.utils import metadata_to_str, set_seed, load_abo_dataset
 from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
 from torch.cuda.amp import autocast, GradScaler
 
-from nice.blip2 import custom_collate_fn, print_trainable_parameters
-from peft import LoraConfig, get_peft_model
+from nice.eval import run_blip2_eval
+from nice.blip import custom_collate_fn, print_trainable_parameters
+from peft import LoraConfig, get_peft_model, PeftConfig, PeftModel
 
 import pandas as pd
 import argparse
@@ -27,54 +29,39 @@ def main(args):
 
     train_dataset, val_dataset, test_dataset = load_abo_dataset(dir="data")
 
-    processor_name = "Salesforce/blip2-opt-2.7b"
-    model_name = "Salesforce/blip2-opt-2.7b"
     if args.load_checkpoint:
-        model_name = args.load_checkpoint
-
-    blip_processor = Blip2Processor.from_pretrained(processor_name)
-    blip_model = Blip2ForConditionalGeneration.from_pretrained(model_name).to(device)
-
-    # Define and apply LoRA configuration
-    lora_config = LoraConfig(
-        r=8,
-        lora_alpha=16,
-        lora_dropout=0.1,
-        bias="none",
-        target_modules=["q_proj", "v_proj"]  # Specify target modules based on the model's architecture
-    )
-    blip_model = get_peft_model(blip_model, lora_config)
+        blip_model = BlipForQuestionAnswering.from_pretrained(args.load_checkpoint).to(device)
+    else:
+        blip_model = BlipForQuestionAnswering.from_pretrained("Salesforce/blip-vqa-base").to(device)
+    
+    blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-vqa-base")
     print_trainable_parameters(blip_model)
 
     optimizer = torch.optim.AdamW(blip_model.parameters(), lr=5e-5)
     blip_model.train()
     epochs = 5
     BATCH_SIZE = 1  # Reduce batch size
-    accumulation_steps = 16  # Number of steps to accumulate gradients
     log_steps = 100
+    gradient_accumulation = 4
 
-    collate_fn = lambda batch: custom_collate_fn(batch, blip_processor)
+    collate_fn = lambda batch: custom_collate_fn(batch, blip_processor, 256)
 
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
 
     for epoch in range(epochs):
         print(f"Epoch {epoch+1}/{epochs}")
         optimizer.zero_grad()
-        for i, batch in enumerate(tqdm(train_loader)):
-            input_ids = batch["input_ids"].to(device)
-            input_images = batch["pixel_values"].to(device)
+        for i, (inputs, labels) in enumerate(tqdm(train_loader)):
 
-            inputs = {
-                "input_ids": input_ids,
-                "pixel_values": input_images
-            }
+            inputs["input_ids"] = inputs["input_ids"].to(device)
+            inputs["pixel_values"] = inputs["pixel_values"].to(device)
+            inputs["labels"] = labels.input_ids.to(device)
 
-            outputs = blip_model(**inputs, labels=input_ids)
+            outputs = blip_model(**inputs)
             loss = outputs.loss
-            loss = loss / accumulation_steps  # Scale loss
             loss.backward()
 
-            if (i + 1) % accumulation_steps == 0:
+            if (i + 1) % gradient_accumulation == 0:
                 optimizer.step()
                 optimizer.zero_grad()
 
@@ -82,7 +69,8 @@ def main(args):
                 print(f"Loss: {loss.item()}")
 
         # Save the model after each epoch
-        blip_model.save_pretrained(f"results/blip2/{current_time}/epoch_{epoch}")
+        blip_model.save_pretrained(f"results/blip/{current_time}/epoch_{epoch}")
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
