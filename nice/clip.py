@@ -30,15 +30,49 @@ def clipcap_infer(clipcap_model, clip_processor, gpt_tokenizer, path_to_image, p
     image_features = clipcap_model.clip_model.get_image_features(**inputs)
     image_features = clipcap_model.projection(image_features).unsqueeze(1)
     
-    # Prepare input for GPT-2
+    # Set a default prompt if none is provided
+    potential_prompts = [
+        "Describe the key features of this product: ",
+        "What are the main benefits of this product? ",
+        "Provide a detailed description of this product: ",
+        "How can this product be used? ",
+        "What are the advantages of using this product? ",
+        "Explain how this product can solve a problem: ",
+        "Why should a customer buy this product? ",
+        "What makes this product unique? ",
+        "Highlight the unique selling points of this product: ",
+        "List the specifications of this product: ",
+        "What technical details should customers know about this product? "
+    ]
+    potential_prompt = potential_prompts[torch.randint(len(potential_prompts), (1,)).item()]
     if prompt is None:
-        prompt = "Describe this image: "
+        prompt = potential_prompt
+    else:
+        prompt = prompt + potential_prompt
     
     text_inputs = gpt_tokenizer(prompt, return_tensors="pt").input_ids.to(device)
+    text_attention_mask = gpt_tokenizer(prompt, return_tensors="pt").attention_mask.to(device)
     
-    # Generate caption
+    # Generate attention mask for the concatenated input
+    batch_size, seq_length = text_inputs.shape
+    image_attention_mask = torch.ones((batch_size, 1), device=device)
+    attention_mask = torch.cat((image_attention_mask, text_attention_mask), dim=1)
+
+    # Generate caption with adjusted parameters
     input_embeds = torch.cat((image_features, clipcap_model.gpt_model.transformer.wte(text_inputs)), dim=1)
-    generated_ids = clipcap_model.gpt_model.generate(inputs_embeds=input_embeds, max_new_tokens=max_new_tokens)
+    generated_ids = clipcap_model.gpt_model.generate(
+        inputs_embeds=input_embeds, 
+        attention_mask=attention_mask, 
+        max_new_tokens=max_new_tokens, 
+        pad_token_id=gpt_tokenizer.eos_token_id,
+        temperature=1.0,  # Adjust temperature for more randomness
+        top_k=50,         # Consider only the top 50 tokens
+        top_p=0.9,        # Use nucleus sampling
+        repetition_penalty=2.0,  # Apply repetition penalty
+        num_return_sequences=1,
+        early_stopping=True
+    )
+    
     caption = gpt_tokenizer.decode(generated_ids[0], skip_special_tokens=True).strip()
     
     return caption
@@ -121,7 +155,7 @@ def main():
     gpt_model_name = "gpt2"
 
     clip_processor = CLIPProcessor.from_pretrained(clip_model_name)
-    clip_model = CLIPModel.from_pretrained(clip_model_name).to(device)
+    clip_model = CLIPModel.from_pretrained("pretrained_clip_model_lora").to(device)
 
     gpt_tokenizer = GPT2Tokenizer.from_pretrained(gpt_model_name)
     gpt_model = GPT2LMHeadModel.from_pretrained(gpt_model_name).to(device)
@@ -185,13 +219,13 @@ def main():
         bullet_points_gt = "; ".join([bullet_point["value"] for bullet_point in bullet_points])
         clip_caption = clipcap_infer(clipcap_model, clip_processor, gpt_tokenizer, path_to_image)
         meta_str = meta_str[:2048]
-        clip_prompt = " Metadata: " + meta_str + " a photo of"
+        clip_prompt = " Metadata: " + meta_str
         clip_caption_with_meta = clipcap_infer(clipcap_model, clip_processor, gpt_tokenizer, path_to_image, prompt=clip_prompt, max_new_tokens=256)
 
         clip_pred.append((main_image_id, path_to_image, bullet_points_gt, clip_caption, clip_caption_with_meta, meta_str))
-        print(clip_caption)
+        print("clip_caption: ", clip_caption)
         print("\n")
-        print(clip_caption_with_meta)
+        print("clip_caption_with_meta: ", clip_caption_with_meta)
 
     out_df = pd.DataFrame(clip_pred, columns=["main_image_id", "path_to_image", "bullet_points_gt", "clip_caption", "clip_caption_with_meta", "metadata"])
     out_df.to_csv("pred_clip.csv", index=False)
