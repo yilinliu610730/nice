@@ -5,7 +5,7 @@ from PIL import Image
 sys.path.append(".")
 # sys.path.append("..")
 
-from transformers import Blip2Processor, Blip2ForConditionalGeneration
+from transformers import AutoProcessor, Blip2ForConditionalGeneration
 import torch
 from nice.utils import metadata_to_str, set_seed, load_abo_dataset
 from torch.utils.data import DataLoader
@@ -32,14 +32,14 @@ def main(args):
     if args.load_checkpoint:
         model_name = args.load_checkpoint
 
-    blip_processor = Blip2Processor.from_pretrained(processor_name)
+    blip_processor = AutoProcessor.from_pretrained(processor_name)
     blip_model = Blip2ForConditionalGeneration.from_pretrained(model_name).to(device)
 
     # Define and apply LoRA configuration
     lora_config = LoraConfig(
-        r=8,
-        lora_alpha=16,
-        lora_dropout=0.1,
+        r=32,
+        lora_alpha=32,
+        lora_dropout=0.05,
         bias="none",
         target_modules=["q_proj", "v_proj"]  # Specify target modules based on the model's architecture
     )
@@ -48,9 +48,9 @@ def main(args):
 
     optimizer = torch.optim.AdamW(blip_model.parameters(), lr=5e-5)
     blip_model.train()
-    epochs = 5
-    BATCH_SIZE = 1  # Reduce batch size
-    accumulation_steps = 16  # Number of steps to accumulate gradients
+    epochs = 1
+    BATCH_SIZE = 4  # Reduce batch size
+    accumulation_steps = 1  # Number of steps to accumulate gradients
     log_steps = 100
 
     collate_fn = lambda batch: custom_collate_fn(batch, blip_processor)
@@ -71,12 +71,12 @@ def main(args):
 
             outputs = blip_model(**inputs, labels=input_ids)
             loss = outputs.loss
-            loss = loss / accumulation_steps  # Scale loss
+            # loss = loss / accumulation_steps  # Scale loss
             loss.backward()
 
-            if (i + 1) % accumulation_steps == 0:
-                optimizer.step()
-                optimizer.zero_grad()
+            # if (i + 1) % accumulation_steps == 0:
+            #     optimizer.step()
+            #     optimizer.zero_grad()
 
             if i % log_steps == 0:
                 print(f"Loss: {loss.item()}")

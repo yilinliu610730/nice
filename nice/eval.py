@@ -86,6 +86,7 @@ def run_blip2_eval(dataset, model, tokenizer, max_seq_length=256, out_file="blip
         print(f"prompt: {prompt}")
         print(f"caption: {caption}")
         print(f"bullet_points_gt: {bullet_points_gt}")
+        print()
 
         blip_pred.append((image_id, path_to_image, bullet_points_gt, caption, meta_str))
 
