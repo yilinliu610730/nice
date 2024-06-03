@@ -83,7 +83,8 @@ def run_blip2_eval(dataset, model, tokenizer, max_seq_length=256, out_file="blip
         prompt = prefix + meta_str
 
         caption = blip2_infer(model, tokenizer, path_to_image, prompt=prompt, max_new_tokens=max_seq_length)
-        
+        print(f"caption: {caption}")
+
         blip_pred.append((image_id, path_to_image, bullet_points_gt, caption, meta_str))
 
     out_df = pd.DataFrame(blip_pred, columns=["image_id", "path_to_image", "bullet_points_gt", "caption", "metadata"])
@@ -118,8 +119,7 @@ def run_ofa_eval(dataset, model, tokenizer, max_seq_length=256, out_file="ofa_pr
 def blip2_infer(model, processor, path_to_image, prompt=None, max_new_tokens=50):
     image = Image.open(path_to_image).convert("RGB")
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    txt = " a photo of" if prompt is None else prompt
-    inputs = processor(images=image, text=txt, return_tensors="pt").to(device=device)
+    inputs = processor(images=image, text=prompt, return_tensors="pt", padding="max_length", truncation=True, max_length=max_new_tokens).to(device=device)
     generated_ids = model.generate(**inputs, max_new_tokens=max_new_tokens)
     caption = processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
 

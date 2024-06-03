@@ -17,20 +17,15 @@ def truncate_or_pad(sequence, max_length, pad_token_id):
         return torch.cat([sequence, padding], dim=1)
 
 def custom_collate_fn(batch, blip_tokenizer, max_length=256):
-    input_ids = []
+
+    texts = []
     input_images = []
-    labels_list = []
-    meta_str_list = []
-    bullet_points_gt_list = []
-    main_image_id_list = []
-    path_to_image_list = []
 
     for image_data in batch:
         main_image_id = image_data["main_image_id"]
         path_to_image = image_data["path"]
         bullet_points = image_data["bullet_points"]
         meta_data = image_data["metadata"]
-
         meta_str = metadata_to_str(meta_data)
         prefix = ' What is the item description?'
         prompt = prefix + meta_str
@@ -42,44 +37,38 @@ def custom_collate_fn(batch, blip_tokenizer, max_length=256):
 
         inputs = blip_tokenizer(
             text=prompt,
-            images=image,
             return_tensors="pt",
             padding="max_length",
             truncation=True,
             max_length=max_length
         )
 
-        input_ids.append(inputs.input_ids)
+        in_decoded_str = blip_tokenizer.batch_decode(inputs.input_ids, skip_special_tokens=True)[0].strip()
+
         labels = blip_tokenizer.tokenizer(
             text=bullet_points_gt,
             return_tensors="pt",
             padding="max_length",
             truncation=True,
             max_length=max_length
-        ).input_ids
+        )
 
-        labels_list.append(labels)
-        input_images.append(inputs.pixel_values)
-        meta_str_list.append(meta_str)
-        bullet_points_gt_list.append(bullet_points_gt)
-        main_image_id_list.append(main_image_id)
-        path_to_image_list.append(path_to_image)
+        out_decoded_str = blip_tokenizer.batch_decode(labels.input_ids, skip_special_tokens=True)[0].strip()
+        concat_str = in_decoded_str + " " + out_decoded_str
+        
+        texts.append(concat_str)
+        input_images.append(image)
 
-    pad_token_id = blip_tokenizer.tokenizer.pad_token_id
+    inputs = blip_tokenizer(
+        text=texts,
+        images=input_images,
+        return_tensors="pt",
+        padding="max_length",
+        truncation=True,
+        max_length=max_length * 2
+    )
 
-    input_ids = torch.cat([truncate_or_pad(ids, max_length, pad_token_id) for ids in input_ids], dim=0)
-    labels = torch.cat([truncate_or_pad(lbls, max_length, pad_token_id) for lbls in labels_list], dim=0)
-    input_images = torch.cat(input_images, dim=0)
-
-    return {
-        "input_ids": input_ids,
-        "pixel_values": input_images,
-        "labels": labels,
-        # "meta_str": meta_str_list,
-        # "bullet_points_gt": bullet_points_gt_list,
-        # "main_image_id": main_image_id_list,
-        # "path_to_image": path_to_image_list
-    }
+    return inputs
 
 def print_trainable_parameters(model):
     trainable = 0
