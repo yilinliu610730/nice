@@ -2,9 +2,7 @@ import sys
 
 sys.path.append(".")
 
-from transformers import AutoProcessor, BlipForConditionalGeneration
-from transformers import Blip2Processor, Blip2ForConditionalGeneration
-from peft import LoraConfig, get_peft_model, PeftConfig, PeftModel
+from transformers import BlipForQuestionAnswering, BlipProcessor
 from nice.eval import run_blip2_eval
 from nice.utils import set_seed, load_abo_dataset
 import argparse
@@ -15,16 +13,16 @@ def main(args):
 
     train_dataset, val_dataset, test_dataset = load_abo_dataset(dir="data")
 
-    model_name = "Salesforce/blip-image-captioning-base"
-    tokenizer_name = "Salesforce/blip-image-captioning-base"
+    model_name = "Salesforce/blip-vqa-base"
+    tokenizer_name = "Salesforce/blip-vqa-base"
 
     if args.load_checkpoint:
         model_name = args.load_checkpoint
 
-    model = BlipForConditionalGeneration.from_pretrained(model_name).cuda()
-    tokenizer = AutoProcessor.from_pretrained(tokenizer_name)
+    model = BlipForQuestionAnswering.from_pretrained(model_name).cuda()
+    tokenizer = BlipProcessor.from_pretrained(tokenizer_name)
 
-    run_blip2_eval(train_dataset, model, tokenizer, out_file="blip2_pred.csv")
+    run_blip2_eval(test_dataset, model, tokenizer, out_file="blip2_pred.csv")
 
 
 if __name__ == '__main__':
