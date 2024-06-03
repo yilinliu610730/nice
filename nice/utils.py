@@ -3,7 +3,7 @@ import random
 import torch
 import numpy as np
 import os
-from data.abo import ABODataset
+from nice.data.abo import ABODataset
 from torch.utils.data import DataLoader, random_split
 
 
