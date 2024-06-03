@@ -23,7 +23,7 @@ def main(args):
     model = OFAModel.from_pretrained(model_name, use_cache=True).cuda()
     tokenizer = OFATokenizer.from_pretrained(tokenizer_name)
 
-    run_ofa_eval(val_dataset, model, tokenizer, out_file="ofa_pred.csv")
+    run_ofa_eval(val_dataset, model, tokenizer, max_seq_length=256, out_file="ofa_pred.csv")
 
 
 if __name__ == '__main__':
