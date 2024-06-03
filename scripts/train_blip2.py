@@ -40,7 +40,7 @@ def main(args):
     optimizer = torch.optim.AdamW(blip_model.parameters(), lr=5e-5)
     blip_model.train()
     epochs = 10
-    BATCH_SIZE = 16  # Reduce batch size
+    BATCH_SIZE = 4  # Reduce batch size
     log_steps = 100
 
     collate_fn = lambda batch: custom_collate_fn(batch, blip_processor, 256)
