@@ -22,7 +22,7 @@ def main(args):
     model = BlipForQuestionAnswering.from_pretrained(model_name).cuda()
     tokenizer = BlipProcessor.from_pretrained(tokenizer_name)
 
-    run_blip2_eval(test_dataset, model, tokenizer, out_file="blip2_pred.csv")
+    run_blip2_eval(test_dataset, model, tokenizer, out_file="blip_pred.csv")
 
 
 if __name__ == '__main__':

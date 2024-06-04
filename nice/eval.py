@@ -83,11 +83,6 @@ def run_blip2_eval(dataset, model, tokenizer, max_seq_length=256, out_file="blip
         prompt = prefix + meta_str
 
         caption = blip2_infer(model, tokenizer, path_to_image, prompt=prompt, max_new_tokens=max_seq_length)
-        print(f"prompt: {prompt}")
-        print(f"caption: {caption}")
-        print(f"bullet_points_gt: {bullet_points_gt}")
-        print()
-
         blip_pred.append((image_id, path_to_image, bullet_points_gt, caption, meta_str))
 
     out_df = pd.DataFrame(blip_pred, columns=["image_id", "path_to_image", "bullet_points_gt", "caption", "metadata"])
