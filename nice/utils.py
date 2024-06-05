@@ -3,7 +3,7 @@ import random
 import torch
 import numpy as np
 import os
-from data.abo import ABODataset
+from nice.data.abo import ABODataset
 from torch.utils.data import DataLoader, random_split
 
 
@@ -46,7 +46,7 @@ def metadata_to_str(metadata):
     return result.strip()
 
 
-def load_abo_dataset(dir="data"):
+def load_abo_dataset(dir="data", split=True):
 
     dataset_path = f"{dir}/abo_dataset.pkl"
 
@@ -58,6 +58,9 @@ def load_abo_dataset(dir="data"):
         save_pickle(dataset_path, abo_dataset)
 
     print("dataset load complete")
+
+    if not split:
+        return abo_dataset
 
     total_size = len(abo_dataset)
     train_size = int(0.7 * total_size)
